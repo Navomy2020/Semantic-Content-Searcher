@@ -4,7 +4,9 @@ import path from 'path';
 import { getEmbedding } from '../lib/ai.js';
 import {createClient} from '@supabase/supabase-js'
 import crypto from 'crypto';
-
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdf = require('pdf-parse');
 export async function readFile(req) {
     const jwtToken = req.userToken;
     if(!jwtToken){
@@ -50,9 +52,17 @@ export async function readFile(req) {
         if (insertFileError) {
         console.error("Failed to register new file hash record:", insertFileError);
         throw insertFileError;
-    }
+    }   
+        let rawTextContent='';
+        if(req.file.mimetype === 'application/pdf'){
+            const parsedPdfData = await pdf(req.file.buffer);
+            rawTextContent = parsedPdfData.text;
+        }
+        else{
+            rawTextContent = req.file.buffer.toString('utf-8');
+        }
         const targetFileId = newFileRecord.id;
-        const rawTextContent = req.file.buffer.toString('utf-8');
+        
         
         chunks = await splitText(rawTextContent);
         

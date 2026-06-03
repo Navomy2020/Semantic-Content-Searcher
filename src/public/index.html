@@ -92,7 +92,7 @@
                         <p class="text-xs sm:text-sm font-medium text-gray-300">
                             <span class="text-emerald-400 font-semibold">Click to upload</span> or drag and drop
                         </p>
-                        <p class="text-[11px] text-gray-500">Plain Text (.txt) or Markdown (.md) up to 50KB</p>
+                        <p class="text-[11px] text-gray-500">Plain Text (.txt) or Markdown (.md) or PDF up to 500KB</p>
                         <p id="uploadStatus" class="text-xs font-semibold mt-1 hidden"></p>
                     </div>
                 </div>
@@ -360,8 +360,8 @@
         });
 
         async function handleFileUpload(file) {
-            if (file.size > 50 * 1024) {
-                showUploadMessage("File exceeds 50KB safety limit!", "text-red-400");
+            if (file.size > 500 * 1024) {
+                showUploadMessage("File exceeds 500KB safety limit!", "text-red-400");
                 return;
             }
             const formData = new FormData();
