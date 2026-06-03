@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semantic Docs Searcher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-gray-100 min-h-screen flex overflow-hidden">
+
+    <div class="flex h-screen w-full overflow-hidden relative">
+
+        <div
+            class="md:hidden absolute top-0 left-0 right-0 h-14 bg-gray-950 border-b border-gray-800 flex items-center justify-between px-4 z-30">
+            <button id="mobileMenuOpenBtn"
+                class="text-gray-400 hover:text-white focus:outline-none p-1 bg-gray-900 border border-gray-800 rounded">
+                📁 Files
+            </button>
+            <h1 class="text-sm font-bold text-emerald-400 truncate max-w-[180px]">RAG Searcher</h1>
+            <div id="mobileBadgeProxy" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+        </div>
+
+        <div id="sidebarContainer"
+            class="fixed inset-y-0 left-0 w-72 bg-gray-950 border-r border-gray-800 flex flex-col justify-between p-5 shrink-0 z-40 transform -translate-x-full transition-transform duration-300 ease-in-out md:relative md:transform-none md:flex md:w-80">
+            <div>
+                <div class="flex items-center justify-between pb-4 border-b border-gray-800">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl">🔒</span>
+                        <h2 class="text-xs font-bold tracking-wider uppercase text-gray-400">Privacy Sandbox</h2>
+                    </div>
+                    <button id="mobileMenuCloseBtn"
+                        class="md:hidden text-gray-500 hover:text-white text-xl p-1">&times;</button>
+                </div>
+
+                <div
+                    class="mt-4 p-3 rounded-lg bg-blue-950/30 border border-blue-900/40 text-xs text-blue-300 leading-relaxed">
+                    <strong>Infrastructure Node Active:</strong> Rows are isolated using PostgreSQL Row-Level Security.
+                    Clicking trash completely deletes your text and vector footprints permanently.
+                </div>
+
+                <div class="mt-6">
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Your Files</h3>
+                    <div id="documentListContainer" class="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+                        <p class="text-xs text-gray-500 italic p-2">No files uploaded.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-gray-800 text-[10px] text-gray-600 flex justify-between items-center">
+                <span id="storageStatusBadge"
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 w-full justify-center">
+                    <span id="badgePulse" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span id="badgeText">Sandbox: Clears Nightly</span>
+                </span>
+            </div>
+        </div>
+
+        <div id="sidebarBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 hidden md:hidden"></div>
+
+        <div class="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto mt-14 md:mt-0">
+            <div class="w-full max-w-3xl bg-gray-800 rounded-xl shadow-2xl p-4 sm:p-6 border border-gray-700 my-auto">
+
+                <div
+                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-gray-700 pb-4">
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold text-emerald-400 flex items-center gap-2">
+                            RAG Documentation Searcher
+                        </h1>
+                        <p id="userDisplayStatus" class="text-xs text-gray-400 mt-1 data-init-pulse">Initializing secure
+                            session...</p>
+                    </div>
+
+                    <div class="flex items-center gap-3 self-end sm:self-auto">
+                        <button id="authModalBtn"
+                            class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors hidden">
+                            Sign In / Register
+                        </button>
+                    </div>
+                </div>
+
+                <div id="dropZone"
+                    class="mb-6 border-2 border-dashed border-gray-600 hover:border-emerald-500 bg-gray-950/40 rounded-xl p-4 sm:p-6 text-center cursor-pointer transition-all group">
+                    <input type="file" id="fileInput" accept=".txt,.md" class="hidden">
+                    <div class="flex flex-col items-center gap-2">
+                        <svg class="w-7 h-7 sm:w-8 sm:h-8 text-gray-400 group-hover:text-emerald-400 transition-colors"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <p class="text-xs sm:text-sm font-medium text-gray-300">
+                            <span class="text-emerald-400 font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p class="text-[11px] text-gray-500">Plain Text (.txt) or Markdown (.md) up to 50KB</p>
+                        <p id="uploadStatus" class="text-xs font-semibold mt-1 hidden"></p>
+                    </div>
+                </div>
+
+                <form id="searchForm" class="flex flex-col sm:flex-row gap-2 mb-6">
+                    <input type="text" id="queryInput" placeholder="Ask something about your documents..."
+                        class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                        required>
+                    <button type="submit" id="searchBtn"
+                        class="bg-emerald-500 hover:bg-emerald-600 text-gray-950 font-semibold px-6 py-3 rounded-lg transition-colors flex items-center justify-center text-sm min-w-[100px]">
+                        Search
+                    </button>
+                </form>
+
+                <div
+                    class="border border-gray-700 rounded-lg p-4 bg-gray-950 min-h-[180px] max-h-[280px] sm:max-h-[350px] overflow-y-auto font-mono text-xs sm:text-sm leading-relaxed">
+                    <div id="outputWindow" class="whitespace-pre-wrap text-gray-300"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="authModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-gray-800 border border-gray-700 w-full max-w-md p-6 rounded-xl shadow-2xl relative mx-4">
+            <button id="closeModalBtn"
+                class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
+
+            <h2 id="modalTitle" class="text-xl font-bold text-emerald-400 mb-4">Account Login</h2>
+
+            <form id="authForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">Email Address</label>
+                    <input type="email" id="authEmail"
+                        class="w-full bg-gray-950 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm"
+                        required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">Password</label>
+                    <input type="password" id="authPassword"
+                        class="w-full bg-gray-950 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm"
+                        required>
+                </div>
+
+                <button type="submit" id="authSubmitBtn"
+                    class="w-full bg-emerald-500 hover:bg-emerald-600 text-gray-950 font-bold py-2 rounded-lg transition-colors mt-2 text-sm">
+                    Sign In
+                </button>
+            </form>
+
+            <div class="mt-4 text-center">
+                <button id="toggleAuthMode"
+                    class="text-xs text-emerald-400 hover:underline bg-transparent border-0 cursor-pointer">
+                    New user? Register instead
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Existing document elements mapping
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const searchForm = document.getElementById('searchForm');
+        const queryInput = document.getElementById('queryInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const outputWindow = document.getElementById('outputWindow');
+
+        // Auth Element Mappings
+        const authModal = document.getElementById('authModal');
+        const authModalBtn = document.getElementById('authModalBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const authForm = document.getElementById('authForm');
+        const authEmail = document.getElementById('authEmail');
+        const authPassword = document.getElementById('authPassword');
+        const modalTitle = document.getElementById('modalTitle');
+        const authSubmitBtn = document.getElementById('authSubmitBtn');
+        const toggleAuthMode = document.getElementById('toggleAuthMode');
+        const userDisplayStatus = document.getElementById('userDisplayStatus');
+
+        // 📁 Sidebar Elements Mapping
+        const documentListContainer = document.getElementById('documentListContainer');
+        const sidebarContainer = document.getElementById('sidebarContainer');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        const mobileMenuOpenBtn = document.getElementById('mobileMenuOpenBtn');
+        const mobileMenuCloseBtn = document.getElementById('mobileMenuCloseBtn');
+        const mobileBadgeProxy = document.getElementById('mobileBadgeProxy');
+
+        // Storage Status Components
+        const storageStatusBadge = document.getElementById('storageStatusBadge');
+        const badgePulse = document.getElementById('badgePulse');
+        const badgeText = document.getElementById('badgeText');
+
+        let isLoginMode = true;
+
+        // 📁 Responsive Sidebar Drawer Open/Close Toggles
+        mobileMenuOpenBtn.addEventListener('click', () => {
+            sidebarContainer.classList.remove('-translate-x-full');
+            sidebarBackdrop.classList.remove('hidden');
+        });
+
+        const closeMobileSidebar = () => {
+            sidebarContainer.classList.add('-translate-x-full');
+            sidebarBackdrop.classList.add('hidden');
+        };
+
+        mobileMenuCloseBtn.addEventListener('click', closeMobileSidebar);
+        sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+
+        // Auth UI Visibility Logic
+        authModalBtn.addEventListener('click', () => {
+            isLoginMode = true;
+            modalTitle.textContent = "Account Login";
+            authSubmitBtn.textContent = "Sign In";
+            toggleAuthMode.textContent = "New user? Register instead";
+            authForm.reset();
+            authModal.classList.remove('hidden');
+        });
+
+        closeModalBtn.addEventListener('click', () => authModal.classList.add('hidden'));
+
+        toggleAuthMode.addEventListener('click', () => {
+            isLoginMode = !isLoginMode;
+            if (isLoginMode) {
+                modalTitle.textContent = "Account Login";
+                authSubmitBtn.textContent = "Sign In";
+                toggleAuthMode.textContent = "New user? Register instead";
+            } else {
+                modalTitle.textContent = "Account Registration";
+                authSubmitBtn.textContent = "Create Permanent Account";
+                toggleAuthMode.textContent = "Already have an account? Log In instead";
+            }
+        });
+
+        // 🔄 HELPER TO DYNAMICALLY UPDATE STORAGE BADGE STATE
+        function updateStorageBadge(isTemporary) {
+            if (isTemporary) {
+                storageStatusBadge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 w-full justify-center";
+                badgePulse.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+                mobileBadgeProxy.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+                badgeText.textContent = "Sandbox: Clears Nightly";
+            } else {
+                storageStatusBadge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-full justify-center";
+                badgePulse.className = "w-2 h-2 rounded-full bg-emerald-500";
+                mobileBadgeProxy.className = "w-2 h-2 rounded-full bg-emerald-500";
+                badgeText.textContent = "Cloud Workspace: Persistent";
+            }
+        }
+
+        // 📁 PIPELINE FUNCTION: FETCH AND RENDER FILES OWNED BY ACTIVE ID
+        async function loadUserDocuments() {
+            try {
+                const response = await fetch('/api/documents');
+                const result = await response.json();
+
+                if (!response.ok) throw new Error(result.error || 'Failed to sync documents.');
+
+                documentListContainer.innerHTML = '';
+
+                if (!result.documents || result.documents.length === 0) {
+                    documentListContainer.innerHTML = `<p class="text-xs text-gray-500 italic p-2">No files uploaded.</p>`;
+                    return;
+                }
+
+                result.documents.forEach(doc => {
+                    const dateStr = new Date(doc.uploaded_at || new Date()).toLocaleDateString(undefined, {
+                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                    });
+
+                    const docRow = document.createElement('div');
+                    docRow.className = "flex items-center justify-between p-2 rounded-lg bg-gray-900 border border-gray-800 hover:border-gray-700 transition-colors group";
+
+                    docRow.innerHTML = `
+                        <div class="flex flex-col truncate pr-2 w-[80%]">
+                            <span class="text-xs font-medium text-gray-300 truncate" title="${doc.file_name}">📄 ${doc.file_name}</span>
+                            <span class="text-[10px] text-gray-500 mt-0.5">${dateStr}</span>
+                        </div>
+                    `;
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = "text-gray-500 hover:text-red-400 p-1 rounded hover:bg-gray-800 transition-colors shrink-0";
+                    deleteBtn.title = "Permanently delete document and embeddings";
+                    deleteBtn.innerHTML = "🗑️";
+
+                    deleteBtn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        await deleteDocument(doc.id);
+                    });
+
+                    docRow.appendChild(deleteBtn);
+                    documentListContainer.appendChild(docRow);
+                });
+            } catch (err) {
+                console.error("Workspace sync failure:", err);
+                documentListContainer.innerHTML = `<p class="text-xs text-red-400 p-2">⚠️ Sync Error: ${err.message}</p>`;
+            }
+        }
+
+        // 🗑 ... Remaining JavaScript block configurations match your original functions ...
+        async function deleteDocument(fileId) {
+            if (!confirm("Are you sure you want to permanently delete this document and all its corresponding vector embeddings from our cloud database?")) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/documents/${fileId}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Delete execution rejected.');
+                await loadUserDocuments();
+            } catch (err) {
+                alert(`Purge Failure: ${err.message}`);
+            }
+        }
+
+        async function initSession() {
+            try {
+                const res = await fetch('/api/auth/guest', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    if (data.alreadyAuthenticated) {
+                        userDisplayStatus.textContent = "🛡️ Session Restored (Data sandboxed)";
+                        updateStorageBadge(false);
+                    } else {
+                        userDisplayStatus.textContent = "👤 Secure Guest Session Active (Data sandboxed)";
+                        updateStorageBadge(true);
+                    }
+                    userDisplayStatus.classList.remove('animate-pulse');
+                    authModalBtn.classList.remove('hidden');
+                    await loadUserDocuments();
+                }
+            } catch (err) {
+                console.error("Session initialization failed:", err);
+                userDisplayStatus.textContent = "❌ Connection Fault: Security layer offline.";
+            }
+        }
+        window.addEventListener('DOMContentLoaded', initSession);
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/register';
+            authSubmitBtn.disabled = true;
+            authSubmitBtn.textContent = "Verifying...";
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: authEmail.value, password: authPassword.value })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    authModal.classList.add('hidden');
+                    authForm.reset();
+                    userDisplayStatus.textContent = `🛡️ Authenticated Profile: ${authEmail.value}`;
+                    updateStorageBadge(false);
+                    await loadUserDocuments();
+                } else {
+                    alert(`Authentication Error: ${data.error}`);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Network fault attempting verification.");
+            } finally {
+                authSubmitBtn.disabled = false;
+                authSubmitBtn.textContent = isLoginMode ? "Sign In" : "Create Permanent Account";
+            }
+        });
+
+        async function handleFileUpload(file) {
+            if (file.size > 50 * 1024) {
+                showUploadMessage("File exceeds 50KB safety limit!", "text-red-400");
+                return;
+            }
+            const formData = new FormData();
+            formData.append('document', file);
+            showUploadMessage(`Uploading ${file.name}...`, "text-amber-400 animate-pulse");
+            try {
+                const response = await fetch('/api/upload', { method: 'POST', body: formData });
+                const result = await response.json();
+                if (response.ok) {
+                    showUploadMessage(`✓ ${file.name} uploaded successfully`, "text-emerald-400");
+                    await loadUserDocuments();
+                } else {
+                    showUploadMessage(`❌ ${result.error || 'Upload failed'}`, "text-red-400");
+                }
+            } catch (err) {
+                console.error("Upload error:", err);
+                showUploadMessage("❌ Network connection failed to upload.", "text-red-400");
+            }
+        }
+
+        function showUploadMessage(msg, colorClass) {
+            uploadStatus.textContent = msg;
+            uploadStatus.className = `text-xs font-semibold mt-1 ${colorClass}`;
+            uploadStatus.classList.remove('hidden');
+        }
+
+        // Drag and drop events setup
+        dropZone.addEventListener('click', () => fileInput.click());
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-emerald-500', 'bg-gray-800/50');
+            }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-emerald-500', 'bg-gray-800/50');
+            }, false);
+        });
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            if (dt.files.length) handleFileUpload(dt.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFileUpload(e.target.files[0]);
+        });
+
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query = queryInput.value;
+            searchBtn.disabled = true;
+            searchBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            queryInput.disabled = true;
+            outputWindow.innerHTML = '<span class="text-emerald-400 animate-pulse">Searching Documents.....</span>\n\n';
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: query })
+                });
+                if (!response.ok) throw new Error(`HTTP System Malfunction: ${response.status}`);
+                outputWindow.innerHTML = '';
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let streamBuffer = '';
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    streamBuffer += decoder.decode(value, { stream: true });
+                    const structuralLines = streamBuffer.split('\n');
+                    streamBuffer = structuralLines.pop();
+                    for (const rawLine of structuralLines) {
+                        const trimmedLine = rawLine.trim();
+                        if (!trimmedLine || !trimmedLine.startsWith('data: ')) continue;
+                        try {
+                            const rawJSON = trimmedLine.slice(6);
+                            const parsedData = JSON.parse(rawJSON);
+                            if (parsedData.chunk) outputWindow.innerHTML += parsedData.chunk;
+                        } catch (jsonErr) {
+                            console.warn("Fragment boundary sync mismatch:", jsonErr);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("UI execution anomaly caught:", error);
+                outputWindow.innerHTML = `<span class="text-red-400">🔴 Pipeline Error: ${error.message}</span>`;
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                queryInput.disabled = false;
+                queryInput.focus();
+            }
+        });
+    </script>
+</body>
+
+</html>
