@@ -142,7 +142,7 @@ const textFileFilter = (req, file, cb) => {
 const upload = multer({
     storage: storage,
     fileFilter: textFileFilter,
-    limits: { fileSize: 50 * 1024 }
+    limits: { fileSize: 500 * 1024 }
 });
 
 app.post('/api/upload', upload.single('document'), async (req, res) => {
