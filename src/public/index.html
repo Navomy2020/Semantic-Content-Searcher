@@ -16,7 +16,7 @@
             class="md:hidden absolute top-0 left-0 right-0 h-14 bg-gray-950 border-b border-gray-800 flex items-center justify-between px-4 z-30">
             <button id="mobileMenuOpenBtn"
                 class="text-gray-400 hover:text-white focus:outline-none p-1 bg-gray-900 border border-gray-800 rounded">
-                📁 Files
+                Files
             </button>
             <h1 class="text-sm font-bold text-emerald-400 truncate max-w-[180px]">RAG Searcher</h1>
             <div id="mobileBadgeProxy" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -76,6 +76,10 @@
                         <button id="authModalBtn"
                             class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors hidden">
                             Sign In / Register
+                        </button>
+                        <button id="signOutBtn"
+                            class="bg-red-950/40 hover:bg-red-950/80 border border-red-900 text-xs font-semibold px-3 py-1.5 rounded-lg text-red-400 transition-colors hidden">
+                            Disconnect Session
                         </button>
                     </div>
                 </div>
@@ -152,7 +156,7 @@
     </div>
 
     <script>
-        // Existing document elements mapping
+        // Core Element Form Selectors
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
         const uploadStatus = document.getElementById('uploadStatus');
@@ -161,9 +165,10 @@
         const searchBtn = document.getElementById('searchBtn');
         const outputWindow = document.getElementById('outputWindow');
 
-        // Auth Element Mappings
+        // Authentication Component Selectors
         const authModal = document.getElementById('authModal');
         const authModalBtn = document.getElementById('authModalBtn');
+        const signOutBtn = document.getElementById('signOutBtn');
         const closeModalBtn = document.getElementById('closeModalBtn');
         const authForm = document.getElementById('authForm');
         const authEmail = document.getElementById('authEmail');
@@ -173,7 +178,7 @@
         const toggleAuthMode = document.getElementById('toggleAuthMode');
         const userDisplayStatus = document.getElementById('userDisplayStatus');
 
-        // 📁 Sidebar Elements Mapping
+        // Navigation Sidebar Grid Mappings
         const documentListContainer = document.getElementById('documentListContainer');
         const sidebarContainer = document.getElementById('sidebarContainer');
         const sidebarBackdrop = document.getElementById('sidebarBackdrop');
@@ -181,14 +186,14 @@
         const mobileMenuCloseBtn = document.getElementById('mobileMenuCloseBtn');
         const mobileBadgeProxy = document.getElementById('mobileBadgeProxy');
 
-        // Storage Status Components
+        // Status Badge Structural Components
         const storageStatusBadge = document.getElementById('storageStatusBadge');
         const badgePulse = document.getElementById('badgePulse');
         const badgeText = document.getElementById('badgeText');
 
         let isLoginMode = true;
 
-        // 📁 Responsive Sidebar Drawer Open/Close Toggles
+        // Drawer Menu Interactions
         mobileMenuOpenBtn.addEventListener('click', () => {
             sidebarContainer.classList.remove('-translate-x-full');
             sidebarBackdrop.classList.remove('hidden');
@@ -202,7 +207,7 @@
         mobileMenuCloseBtn.addEventListener('click', closeMobileSidebar);
         sidebarBackdrop.addEventListener('click', closeMobileSidebar);
 
-        // Auth UI Visibility Logic
+        // Access Gateway Modal View Swapping
         authModalBtn.addEventListener('click', () => {
             isLoginMode = true;
             modalTitle.textContent = "Account Login";
@@ -227,7 +232,49 @@
             }
         });
 
-        // 🔄 HELPER TO DYNAMICALLY UPDATE STORAGE BADGE STATE
+        // 🎯 HELPER: Cryptographically Extract the Data Payload directly out of a standard JWT token
+        function parseJwtPayload(tokenStr) {
+            try {
+                if (!tokenStr) return null;
+                const base64Url = tokenStr.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (err) {
+                console.error("JWT string decoding collision caught:", err);
+                return null;
+            }
+        }
+
+        // 🎯 CORE STATE MANAGER: Dynamic visibility dispatcher mapping
+        function syncAuthenticationUILayout(data) {
+
+            if (data.isAnonymous) {
+                authModalBtn.classList.remove('hidden');
+                signOutBtn.classList.add('hidden');
+                userDisplayStatus.textContent = `🛡️ Anonymous Profile`;
+                updateStorageBadge(true);
+            }
+
+            // Condition evaluation check: Does the token context state explicitly indicate anonymity?
+
+            else {
+                // 🛡️ USER IS SECURELY LOGGED IN:
+                // Hide Sign In gateway, show Disconnect option container
+
+                authModalBtn.classList.add('hidden');
+                signOutBtn.classList.remove('hidden');
+
+                // Extract email payload string directly from token metrics
+                const userEmailAddress = data.email;
+                userDisplayStatus.textContent = `🛡️ Authenticated Profile: ${userEmailAddress}`;
+                updateStorageBadge(false); // Sets workspace badge to emerald "Cloud Workspace: Persistent"
+            }
+        }
+
+        // Interface Badge Color Configurations
         function updateStorageBadge(isTemporary) {
             if (isTemporary) {
                 storageStatusBadge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 w-full justify-center";
@@ -242,7 +289,7 @@
             }
         }
 
-        // 📁 PIPELINE FUNCTION: FETCH AND RENDER FILES OWNED BY ACTIVE ID
+        // Fetch user document collections from DB table bounds
         async function loadUserDocuments() {
             try {
                 const response = await fetch('/api/documents');
@@ -291,7 +338,7 @@
             }
         }
 
-        // 🗑 ... Remaining JavaScript block configurations match your original functions ...
+        // Remote Document Extraction Pipeline
         async function deleteDocument(fileId) {
             if (!confirm("Are you sure you want to permanently delete this document and all its corresponding vector embeddings from our cloud database?")) {
                 return;
@@ -306,20 +353,17 @@
             }
         }
 
+        // Initialize session tokens on boot
         async function initSession() {
             try {
+
                 const res = await fetch('/api/auth/guest', { method: 'POST' });
                 const data = await res.json();
                 if (res.ok) {
-                    if (data.alreadyAuthenticated) {
-                        userDisplayStatus.textContent = "🛡️ Session Restored (Data sandboxed)";
-                        updateStorageBadge(false);
-                    } else {
-                        userDisplayStatus.textContent = "👤 Secure Guest Session Active (Data sandboxed)";
-                        updateStorageBadge(true);
-                    }
+                    // Pass the newly acquired or restored token payload down to your structural analyzer
+                    syncAuthenticationUILayout(data);
+
                     userDisplayStatus.classList.remove('animate-pulse');
-                    authModalBtn.classList.remove('hidden');
                     await loadUserDocuments();
                 }
             } catch (err) {
@@ -329,6 +373,7 @@
         }
         window.addEventListener('DOMContentLoaded', initSession);
 
+        // Form profile authentication router execution
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/register';
@@ -344,8 +389,11 @@
                 if (response.ok) {
                     authModal.classList.add('hidden');
                     authForm.reset();
-                    userDisplayStatus.textContent = `🛡️ Authenticated Profile: ${authEmail.value}`;
-                    updateStorageBadge(false);
+                    console.log("Response Recieved");
+
+                    // 🎯 Reroute active token straight to layout generator for instantaneous swapping
+                    syncAuthenticationUILayout(data);
+
                     await loadUserDocuments();
                 } else {
                     alert(`Authentication Error: ${data.error}`);
@@ -359,6 +407,22 @@
             }
         });
 
+        // Close user session pipeline
+        signOutBtn.addEventListener('click', async () => {
+            if (!confirm("Are you sure you want to log out?")) return;
+            try {
+                const response = await fetch('/api/auth/logout', { method: 'POST' });
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert("Failed to securely close user session configuration.");
+                }
+            } catch (err) {
+                console.error("Signout sequence fault:", err);
+            }
+        });
+
+        // Multipart Form Payload Ingestion
         async function handleFileUpload(file) {
             if (file.size > 500 * 1024) {
                 showUploadMessage("File exceeds 500KB safety limit!", "text-red-400");
@@ -388,7 +452,7 @@
             uploadStatus.classList.remove('hidden');
         }
 
-        // Drag and drop events setup
+        // Drag Overlay Interfaces Configuration
         dropZone.addEventListener('click', () => fileInput.click());
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
@@ -410,6 +474,7 @@
             if (e.target.files.length) handleFileUpload(e.target.files[0]);
         });
 
+        // Conversational Search Generation Streams
         searchForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const query = queryInput.value;
@@ -454,6 +519,7 @@
                 searchBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 queryInput.disabled = false;
                 queryInput.focus();
+                queryInput.value = '';
             }
         });
     </script>

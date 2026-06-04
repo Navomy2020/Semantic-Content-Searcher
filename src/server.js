@@ -7,6 +7,7 @@ import { readFile } from './scripts/ingest.js';
 import cookieParser from 'cookie-parser';
 import { searchAndAnswerByStream } from './scripts/search.js';
 import { createClient } from '@supabase/supabase-js'
+import jwt from 'jsonwebtoken';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -35,11 +36,17 @@ app.post('/api/auth/guest', async (req, res) => {
         const existingToken = req.cookies.user_jwt;
         
         if (existingToken) {
-            console.log("🔄 Existing session detected via cookie. Skipping guest creation.");
+            let decoded = jwt.decode(existingToken);
+            let emailAddress = decoded?.email || null;
+        
+            let isAnon = decoded?.is_anonymous;
+            
             return res.json({ 
                 success: true, 
                 message: "Session restored perfectly.",
-                alreadyAuthenticated: true 
+                alreadyAuthenticated: true ,
+                email:emailAddress,
+                isAnonymous:isAnon,
             });
         }
         // 🔑 Get a fresh instance inside the running route
@@ -49,13 +56,18 @@ app.post('/api/auth/guest', async (req, res) => {
         if (error) throw error;
         
         const token = data.session.access_token;
+        let decoded = jwt.decode(token);
+        let isAnon = decoded?.is_anonymous;
+        let emailAddress = decoded?.email || null;
         res.cookie('user_jwt', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
             maxAge: 3600000
         });
-        return res.json({ message: "Successfully authenticated as guest!" });
+        return res.json({ message: "Successfully authenticated as guest!",
+            isAnonymous:isAnon
+         });
     }
     catch (err) {
         console.error("❌ Guest Auth Error:", err.message);
@@ -83,7 +95,9 @@ app.post('/api/auth/register', async (req, res) => {
         }
 
         const token = data.session.access_token;
-
+        let decoded = jwt.decode(token);
+        let isAnon = decoded?.is_anonymous;
+        let emailAddress = decoded?.email || null;
         res.cookie('user_jwt', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -91,7 +105,11 @@ app.post('/api/auth/register', async (req, res) => {
             maxAge: 3600000
         });
 
-        return res.json({ message: "Account created and logged in successfully!" });
+        return res.json({ message: "Account created and logged in successfully!",
+            
+            isAnonymous:isAnon,
+            email:emailAddress
+         });
     } catch (err) {
         console.error("❌ Registration Error:", err.message);
         return res.status(500).json({ error: err.message });
@@ -114,18 +132,59 @@ app.post('/api/auth/login', async (req, res) => {
         if (error) throw error;
 
         const token = data.session.access_token;
-
+        
+        let decoded = jwt.decode(token);
+        let isAnon = decoded?.is_anonymous;
+        let emailAddress = decoded?.email || null;
         res.cookie('user_jwt', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
             maxAge: 3600000
+            
         });
 
-        return res.json({ message: "Logged in successfully!" });
+        return res.json({ message: "Logged in successfully!",
+            
+            isAnonymous:isAnon,
+            email:emailAddress
+         });
     } catch (err) {
         console.error("❌ Login Error:", err.message);
         return res.status(401).json({ error: err.message });
+    }
+});
+//logout
+
+app.post('/api/auth/logout', async (req, res) => {
+    try {
+    
+        const authEngine = getAuthEngine();
+        
+
+        const { error } = await authEngine.auth.signOut();
+        if (error) {
+            console.warn("⚠️ Supabase server signout warning:", error.message);
+            // We continue anyway to make sure we still destroy the browser cookie!
+        }
+
+        // 2. Clear the httpOnly cookie from the browser instantly
+        res.clearCookie('user_jwt', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict'
+        });
+
+        
+        
+        return res.json({ 
+            success: true, 
+            message: "User session terminated cleanly." 
+        });
+    }
+    catch (err) {
+        console.error("❌ Signout Route Error:", err.message);
+        return res.status(500).json({ error: "Internal server error during session termination." });
     }
 });
 
@@ -165,7 +224,7 @@ app.post('/api/upload',aiIngestionLimiter, upload.single('document'), async (req
             }
             req.userToken=jwtToken;
             await readFile(req);
-            console.log(`📄 Ingested file text successfully: ${req.file.originalname}`);
+        
             return res.json({ 
                 success: true, 
                 message: `File "${req.file.originalname}" loaded cleanly.` 

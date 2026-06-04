@@ -14,7 +14,7 @@ export async function readFile(req) {
     if(!jwtToken){
         throw new Error("Security Violation: Ingestion blocked due to missing user session token.");
     }
-    
+    const isUserAnonymous = req.isAnonymousSession;
     const userScopedSupabase = createClient(
         process.env.SUPABASE_URL, 
         process.env.SUPABASE_ANON_KEY, 
@@ -53,7 +53,8 @@ export async function readFile(req) {
         .from('uploaded_files')
         .insert({
             file_hash: fileHash,
-            file_name: req.file.originalname
+            file_name: req.file.originalname,
+            is_anonymous: isUserAnonymous
         })
         .select('id')
         .single();
