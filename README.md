@@ -1,43 +1,27 @@
 # Semantic Document Search Assistant using RAG
+[![Ask DeepWiki](https://devin.ai/assets/askdeepwiki.png)](https://deepwiki.com/Navomy2020/Semantic-Content-Searcher)
 
-A high-performance, full-stack Retrieval-Augmented Generation (RAG) assistant built using JavaScript and Node.js.
+A high-performance, full-stack Retrieval-Augmented Generation (RAG) assistant built using JavaScript and Node.js. This application provides a secure portal where users can upload complex documents and ask conversational, natural language questions about their content.
 
----
-
-## 📄 Project Overview
-
-This application provides a secure portal where users can upload complex documents and ask conversational, natural language questions against them. 
-
-The core system reads raw text strings, strips document structures and uses an intelligent background pipeline to compile content into vector coordinates. When a question is asked, it scans the custom knowledge base in real-time to augment a Large Language Model (LLM) with hyper-focused context, eliminating hallucinations and ensuring private data security.
-
----
-
-## 🎯 Problem Statement
-
-Standard Large Language Models (LLMs) are frozen in time and completely blind to private corporate data, personal documents, or specific context silos. Simply pasting massive documents into an LLM prompt windows hits strict token capacity boundaries, incurs massive API expenses and degrades processing performance.
-
-This project resolves that exact architectural bottleneck. By building an isolated chunking, embedding, and vector-search engine, the system retrieves only the top $K$ most contextually relevant snippets required to answer a specific user question, enabling targeted, cheap and instantaneous factual generation.
-
----
+The core system reads raw text, splits it into intelligent chunks, and converts the content into vector embeddings. When a question is asked, it scans a custom knowledge base in real-time to augment a Large Language Model (LLM) with hyper-focused context, enabling accurate, private, and factual answers.
 
 ## ✨ Features
 
 - **Multi-Format Document Upload:** Supports dynamic processing of complex `.pdf`, `.md`, and `.txt` files.
-- **Linguistic Word-Boundary Chunking:** A custom text segmentation tool that tracks whitespace breaks to prevent clipping vocabulary words.
--  **Duplicate File Detection:** Prevents users from uploading the same document multiple times while allowing different users to upload identical files independently by generating file hashes.
-- **High-Dimensional Vector Generation:** Seamlessly transforms string blocks into structured algebraic floating-point matrices.
-- **Advanced Postgres Hybrid Search:** Merges cosine similarity scores with Full-Text Search cover density matching via custom database procedures.
-- **Multi-User Isolation via Row-Level Security (RLS):** Forces strict tenant isolation using cryptographically verified user tokens.
-- **Dual Access System**: Supports both authenticated users and anonymous guests.
--**Persistent User Storage**: Logged-in users can save, manage, and access documents across sessions.
--**Guest Mode**: Anonymous users can upload and query documents without creating an account.
--**Automatic Data Cleanup**: Guest documents and embeddings are automatically deleted daily to maintain privacy and storage efficiency.
-- **User-Controlled Data Management:** Users can permanently delete documents and all associated vector data from the system.
-
-
----
+- **Advanced PDF Parsing**: Utilizes LlamaCloud's agentic parsing tier to accurately extract markdown from complex PDF layouts.
+- **Word-Boundary Chunking:** A custom text segmentation algorithm that prevents splitting words in the middle, preserving semantic meaning.
+- **Duplicate File Detection:** Generates an MD5 hash of uploaded files to prevent redundant data ingestion for the same user.
+- **High-Dimensional Vector Generation:** Seamlessly transforms text chunks into vector embeddings using Google's `gemini-embedding-001` model.
+- **Advanced Hybrid Search:** Merges vector cosine similarity scores with traditional keyword-based Full-Text Search for superior retrieval relevance.
+- **Multi-User Isolation via RLS:** Enforces strict data tenancy in PostgreSQL using Row-Level Security, ensuring users can only access their own documents.
+- **Dual Access System**: Supports both authenticated registered users and anonymous guests.
+- **Persistent User Storage**: Logged-in users can save, manage, and access documents across sessions.
+- **Automatic Data Cleanup**: A daily cleanup process deletes guest documents and embeddings to maintain privacy and manage storage.
+- **User-Controlled Data Management:** Users can permanently delete their documents and all associated vector data from the system at any time.
 
 ## 🏗️ System Architecture
+
+The application follows a classic RAG pipeline, orchestrated by a Node.js backend.
 
 ```text
 User ──> Upload Document (.pdf/.md/.txt) ──> Express Server (Multer Buffer)
@@ -48,7 +32,7 @@ User ──> Upload Document (.pdf/.md/.txt) ──> Express Server (Multer Buff
              │                                                                                 │
              └────────────────────────────────────────┬────────────────────────────────────────┘
                                                       ▼
-                                       Word-Boundary Splitting (500ch)
+                                       Word-Boundary Splitting (500 chars)
                                                       │
                                                       ▼
                                         AI Vector Embedding Generation
@@ -57,170 +41,156 @@ User ──> Upload Document (.pdf/.md/.txt) ──> Express Server (Multer Buff
                                        Supabase Postgres (+pgvector)
                                                       │
  User ──> Submit Query ──> Compute Embedding ───> Hybrid Search RPC ──> Context Prompt ──> LLM ──> Answer
-
 ```
-# 🛠️ Tech Stack
----
-## Frontend:
 
-- HTML5 & Tailwind CSS
+## 🛠️ Tech Stack
 
-- Vanilla JavaScript 
+- **Frontend:**
+    - HTML5 & Tailwind CSS
+    - Vanilla JavaScript (for asynchronous communication and UI manipulation)
+- **Backend:**
+    - Node.js (running native ES Modules)
+    - Express.js (for routing and middleware)
+    - Multer (for in-memory multipart file handling)
+    - `express-rate-limit` (for API endpoint traffic control)
+- **Database & Storage:**
+    - Supabase (Cloud-hosted PostgreSQL)
+    - `pgvector` extension (for vector similarity storage and search)
+- **AI & Services:**
+    - LlamaCloud SDK (for advanced PDF parsing)
+    - Google GenAI (`gemini-embedding-001`) for embeddings
+    - Groq & Google GenAI (`gemini-2.5-flash`, `llama-3.3-70b-versatile`) for text generation with automatic fallback.
 
-## Backend:
+## 📂 Project Structure
 
-- Node.js (v22 Engine running native ES Modules)
-
-- Express.js
-
-- Multer (In-memory multipart file handling)
-
-## Database & Storage:
-
-- Supabase (Cloud-hosted PostgreSQL)
-
-- pgvector extension (Vector similarity storage)
-
-- GIN Indexing (Trigram & Lexeme Full-Text matching)
-
-## AI Frameworks (Framework-Free / Native APIs):
-
-- LlamaCloud SDK (Advanced PDF structural layout processing)
-
-- Custom Embedding Model Wrapper
-
-- LLM Text Generation Models
-
-#Project Structure
 ```
 semantic-content-searcher/
 ├── .env                     # System infrastructure keys & endpoint targets
 ├── package.json             # Engine configuration and project dependencies
 └── src/
-    ├── server.js            # Express server initialization, routing, & proxy controls
+    ├── server.js            # Express server initialization, auth, and routing
     ├── lib/
-    │   └── ai.js            # Native AI integrations and embedding vector transformations
+    │   └── ai.js            # Native AI integrations and embedding transformations
     ├── middleware/
-    │   └── rateLimiter.js   # Isolated endpoint traffic guardrails and flood protection
+    │   └── rateLimiter.js   # Endpoint traffic guardrails and flood protection
     ├── public/
-    │   └── index.html       # Client interface and asynchronous asynchronous response display
+    │   └── index.html       # Client interface and dynamic response display
     └── scripts/
-        ├── ingest.js        # File parsing, hash matching, and vector database commit loops
-        └── search.js        # Hybrid RPC invocation and context-augmented LLM orchestration
+        ├── ingest.js        # File parsing, chunking, and vector database ingestion
+        └── search.js        # Hybrid search RPC invocation and LLM orchestration
 ```
 
-# ⚙️ RAG Pipeline Inside JavaScript
----
-Because this project avoids high-level abstractions like LangChain, the entire RAG lifecycle is explicitly engineered via native control loops:
+## ⚙️ How It Works
 
-## 1. Document Ingestion
-**Intercept**: Express intercepts files as raw binary Buffer streams inside memory via Multer.
+This project avoids high-level abstractions like LangChain, providing explicit control over each stage of the RAG pipeline.
 
-**Normalize**: Conditional checking switches processing pipelines based on mime-types, outputting unified UTF-8 string data.
+### 1. Document Ingestion (`ingest.js`)
 
-**Hash Verification**: A crypto utility runs an MD5 check across the buffer to ensure the file does not already exist inside the data tables.
+1.  **Intercept**: Express receives the file as a raw binary buffer in memory using Multer.
+2.  **Deduplication**: A crypto utility runs an MD5 check on the buffer to see if the user has already uploaded this exact file.
+3.  **Normalization**: The system checks the file's MIME type. If it's a PDF, the buffer is sent to the LlamaCloud API for advanced layout parsing. If it's `.txt` or `.md`, the buffer is decoded directly into a UTF-8 string.
+4.  **Chunking**: The normalized text is passed through a custom word-boundary-aware splitter, ensuring that chunks do not cut words in half.
+5.  **Embedding & Seeding**: The text chunks are sent in batches to the embedding model. The resulting vectors and content are then bulk-inserted into the PostgreSQL `document_chunks` table to minimize network roundtrips.
 
-**Batch Seed**: String segments are converted into embeddings and inserted into PostgreSQL using optimized bulk inserts to minimize network roundtrips.
+### 2. Retrieval (`search.js`)
 
-## 2. Retrieval
-**Vector Transformation**: The user's query string is dynamically mapped into a floating-point array matching the index model's dimension schema.
+1.  **Vector Transformation**: The user's query is converted into a vector embedding using the same model as the documents.
+2.  **Hybrid Search**: The system invokes a custom PostgreSQL Remote Procedure Call (RPC) named `similarity_fun`. This function performs a hybrid search by combining:
+    - **Vector Similarity Search**: Uses the `<=>` (cosine distance) operator from `pgvector` to find semantically similar chunks.
+    - **Full-Text Search**: Uses `ts_rank_cd` to boost the score of chunks that contain the exact keywords from the query.
+3.  **Ranking**: The RPC returns the top-ranked chunks based on a combined score, providing a set of highly relevant context.
 
-**Hybrid Execution**: The system triggers an explicit Database Remote Procedure Call (RPC) that cross-examines the vector indices and text columns in parallel.
-
-## 3. Generation
-**Context Assembly**: The returned database records are appended together to build a robust context string block.
-
-**Execution**: A custom prompt instruction matrix forces the LLM to restrict its factual boundaries strictly to the provided document text, generating the answer.
-
-## Chunking Strategy
-Standard character chunkers frequently slash words in half, damaging semantic search accuracy. This pipeline uses a specialized Word-Boundary Aware Segmentation Utility
-- **Chunk Size Constraint**: $500$ characters maximum per block.
-- **Sliding Overlap**: $90$ characters to maintain structural context between sequential text segments.
-- **Linguistic Correction Math**: If an index target falls inside a word, the code leverages a backtracking space locator (lastIndexOf(' ')). This forces chunk cuts to wait for a natural gap, maintaining word structural integrity.
-## 🧬 Embedding Model SchemaModel Target:
-- High-efficiency multi-dimensional semantic text model.
-- Vector Spatial Dimensions: $3072$ dimensions per float array.
-- Distance Metric Metric: Cosine Distance (<=>) implemented natively inside database memory scans.
-## 🔍 Retrieval Strategy & Hybrid Search
-
-The system uses **Hybrid Search**, combining:
-
-- **Vector Similarity Search** to understand meaning.
-- **Keyword Search** to match important terms.
-
-A PostgreSQL RPC function ranks document chunks using both scores and returns the most relevant results for answer generation.
+The hybrid score is calculated as:
 ```
-:$$\text{Final Score} = \text{Semantic Cosine Similarity } (1 - (\text{embedding} \Leftrightarrow \text{query\_vector})) + \text{Keyword Match Bonus } (\text{ts\_rank\_cd} \times 0.5)$$Plaintext       ┌──> Vector Similarity Scan (pgvector index) ──> [0.0 to 1.0 Score] ──┐
-Query ─┤                                                                     ├──> Combined Ranking Score
-       └──> Full-Text Cover Density (GIN lexeme index) ─> [Up to 0.5 Bonus] ─┘
+Final Score = (1 - Cosine Distance) + (ts_rank_cd * 0.5)
 ```
-The system uses ts_rank_cd (Cover Density) to check how close search tokens are physically situated to each other in the text block, prioritizing precise phrase hits above loose keyword presence.
 
-# 🗄️ Database SchemaTable: 
-**uploaded_files**  
+### 3. Generation (`ai.js`)
 
-Tracks document registration status to ensure data integrity and prevent hash collisions.
+1.  **Context Assembly**: The content from the retrieved chunks is compiled into a single block of text.
+2.  **Prompting**: This context block is inserted into a system prompt that instructs the LLM to answer the user's original question based *only* on the provided information.
+3.  **Streaming**: The prompt is sent to the generation model (Gemini or Groq Llama-3). The response is streamed back to the user token by token for a real-time conversational effect.
 
-| Column | Type | Description |
-|---------|---------|---------|
-| id | BIGINT | Unique file identifier |
-| file_hash | TEXT | MD5 hash used for duplicate detection |
-| file_name | TEXT | Original uploaded filename |
-| uploaded_at | TIMESTAMPTZ | Upload timestamp |
-| user_id | UUID | Owner of the document |
-| is_anonymous | BOOLEAN | Indicates whether the uploader is anonymous |
+## 🗄️ Database Schema
 
- **document_chunks**  
- 
- Stores the target contextual information and spatial vectors.
- ## Database Schema
+The system uses two primary tables in a PostgreSQL database hosted on Supabase.
 
-| Column | Type | Description |
-|---------|---------|---------|
-| id | BIGSERIAL | Unique chunk identifier |
-| content | TEXT | Chunk text content |
-| embedding | VECTOR(768) | Vector embedding |
-| source_filename | TEXT | Original document name |
-| file_size_bytes | INTEGER | Size of the file in bytes |
-| chunk_index | INTEGER | Position of the chunk within the document |
-| file_id | BIGINT | Reference to the parent file record |
+#### Table: `uploaded_files`
+Tracks document metadata and ownership to enforce security and prevent duplicates.
 
-## Traffic Control & Rate Limiting API Endpoints
-Routes are aggressively throttled via express-rate-limit middlewares.
+| Column       | Type        | Description                                  |
+|--------------|-------------|----------------------------------------------|
+| `id`         | `BIGINT`    | Unique file identifier (Primary Key)         |
+| `file_hash`  | `TEXT`      | MD5 hash for per-user duplicate detection    |
+| `file_name`  | `TEXT`      | Original uploaded filename                   |
+| `uploaded_at`| `TIMESTAMPTZ` | Upload timestamp                             |
+| `user_id`    | `UUID`      | ID of the user who owns the document (Foreign Key) |
+| `is_anonymous`| `BOOLEAN`   | Flag for guest-uploaded documents            |
 
-**1. File Ingestion**
-Endpoint: POST /api/upload
+#### Table: `document_chunks`
+Stores the text chunks and their corresponding vector embeddings.
 
-Traffic Restriction: Maximum of 5 file uploads per hour per IP.
+| Column            | Type          | Description                                    |
+|-------------------|---------------|------------------------------------------------|
+| `id`              | `BIGSERIAL`   | Unique chunk identifier (Primary Key)          |
+| `content`         | `TEXT`        | The text content of the chunk                  |
+| `embedding`       | `VECTOR(768)` | 768-dimension vector from `gemini-embedding-001` |
+| `source_filename` | `TEXT`        | Original document name for reference           |
+| `chunk_index`     | `INTEGER`     | Position of the chunk within the document      |
+| `file_id`         | `BIGINT`      | Reference to the parent file in `uploaded_files` |
+
+## 🚦 API & Rate Limiting
+
+The API endpoints are protected by `express-rate-limit` to prevent abuse.
+
+| Endpoint           | Method   | Description                  | Rate Limit                 |
+|--------------------|----------|------------------------------|----------------------------|
+| `/api/upload`      | `POST`   | Uploads and ingests a document. | **5 uploads** per hour per IP.    |
+| `/api/search`      | `POST`   | Submits a question for RAG.     | **15 requests** per minute per user. |
+| `/api/documents`   | `GET`    | Fetches the user's documents.   | Governed by global limits. |
+| `/api/documents/:id`| `DELETE` | Deletes a document and its data. | Governed by global limits. |
+| `/api/auth/*`      | `POST`   | Handles user authentication. | Governed by global limits. |
 
 
-**2. Conversational Search**
-Endpoint: POST /api/search
+## 🚀 Installation & Local Deployment
 
-Traffic Restriction: Maximum of 15 query requests per minute per user ID.
+Follow these steps to run the project on your local machine.
 
-## Installation & Local Deployment
-**1. Repository Setup**
- ```
-git clone [https://github.com/Navomy2020/semantic-content-searcher.git](https://github.com/your-username/semantic-content-searcher.git)
+**1. Clone the Repository**
+```bash
+git clone https://github.com/Navomy2020/semantic-content-searcher.git
 cd semantic-content-searcher
+```
+
+**2. Install Dependencies**
+```bash
 npm install
 ```
-**2. Configure Environment Keys**
-Create a .env file in the project's root folder:
-```
+
+**3. Configure Environment Variables**
+Create a `.env` file in the project's root folder and populate it with your API keys and credentials.
+
+```env
+# Server Configuration
 PORT=3000
-SUPABASE_URL=[https://your-project-id.supabase.co](https://your-project-id.supabase.co)
-SUPABASE_ANON_KEY=your-supabase-public-anon-token
+
+# Supabase Credentials
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your-supabase-public-anon-key
+
+# AI Service Keys
 LLAMA_CLOUD_API_KEY=llx-your-llamacloud-access-key
-# Configuration targets for your choice of model connections go here...
+GEMINI_API_KEY_PRIMARY=your-google-gemini-api-key
+GROQ_API_KEY_FALLBACK=gsk_your-groq-api-key
 ```
-**3.Build the Database Logic**
-Run the following structure statement in your Supabase SQL window to initialize your hybrid engine structure:
-```
+
+**4. Set Up the Database**
+In your Supabase project's SQL Editor, run the following SQL script to create the hybrid search function. This assumes you have already enabled the `vector` extension.
+
+```sql
 CREATE OR REPLACE FUNCTION similarity_fun(
   question TEXT,
-  vector_array EXTENSIONS.vector(1536),
+  vector_array vector(768),
   threshold FLOAT,
   match_count INT
 )
@@ -236,22 +206,25 @@ AS $$
 BEGIN
   RETURN QUERY
   SELECT
-    document_chunks.id,
-    document_chunks.content,
-    document_chunks.source_filename,
-    document_chunks.chunk_index,
-    ((1 - (document_chunks.embedding <=> vector_array)) + COALESCE(ts_rank_cd(document_chunks.fts, websearch_to_tsquery('english', question)) * 0.5, 0)) AS similarity
-  FROM document_chunks
-  WHERE (1 - (document_chunks.embedding <=> vector_array)) > threshold
+    dc.id,
+    dc.content,
+    dc.source_filename,
+    dc.chunk_index,
+    (
+      (1 - (dc.embedding <=> vector_array)) -- Cosine Similarity
+      + (ts_rank_cd(dc.fts, websearch_to_tsquery('english', question)) * 0.5) -- Keyword Bonus
+    ) AS similarity
+  FROM document_chunks AS dc
+  WHERE (1 - (dc.embedding <=> vector_array)) > threshold
   ORDER BY similarity DESC
   LIMIT match_count;
 END;
 $$;
 ```
-**4. Boot the Server Matrix**
- ```
-node src/server.js
-```
-The server will bind onto http://localhost:3000.
 
-   
+**5. Start the Server**
+```bash
+npm start
+```
+
+The server will be available at `http://localhost:3000`.
