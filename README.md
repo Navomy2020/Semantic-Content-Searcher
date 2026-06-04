@@ -141,8 +141,14 @@ Standard character chunkers frequently slash words in half, damaging semantic se
 - High-efficiency multi-dimensional semantic text model.
 - Vector Spatial Dimensions: $3072$ dimensions per float array.
 - Distance Metric Metric: Cosine Distance (<=>) implemented natively inside database memory scans.
-## 🔍 Retrieval Strategy & Hybrid Scoring
-The application implements a single-stage Weighted Arithmetic Hybrid Search executed at the database hardware layer via a PostgreSQL Remote Procedure Call (similarity_fun).Instead of scanning row-by-row linearly, the database leverages a vector index alongside a GIN Index on the text tokens. It calculates a unified score following this logic
+## 🔍 Retrieval Strategy & Hybrid Search
+
+The system uses **Hybrid Search**, combining:
+
+- **Vector Similarity Search** to understand meaning.
+- **Keyword Search** to match important terms.
+
+A PostgreSQL RPC function ranks document chunks using both scores and returns the most relevant results for answer generation.
 ```
 :$$\text{Final Score} = \text{Semantic Cosine Similarity } (1 - (\text{embedding} \Leftrightarrow \text{query\_vector})) + \text{Keyword Match Bonus } (\text{ts\_rank\_cd} \times 0.5)$$Plaintext       ┌──> Vector Similarity Scan (pgvector index) ──> [0.0 to 1.0 Score] ──┐
 Query ─┤                                                                     ├──> Combined Ranking Score
@@ -151,32 +157,48 @@ Query ─┤                                                                    
 The system uses ts_rank_cd (Cover Density) to check how close search tokens are physically situated to each other in the text block, prioritizing precise phrase hits above loose keyword presence.
 
 # 🗄️ Database SchemaTable: 
-**uploaded_files**
+**uploaded_files**  
+
 Tracks document registration status to ensure data integrity and prevent hash collisions.
-```
-ColumnTypeDescriptionidbigint (PK)Auto-incrementing unique document record IDfile_hashtext (Unique)MD5 checksum of raw input file bufferfile_nametextOriginal file name for interface referencescreated_attimestampAudit timestamp of document ingestionTable:
-```
- **document_chunks**
+
+| Column | Type | Description |
+|---------|---------|---------|
+| id | BIGINT | Unique file identifier |
+| file_hash | TEXT | MD5 hash used for duplicate detection |
+| file_name | TEXT | Original uploaded filename |
+| uploaded_at | TIMESTAMPTZ | Upload timestamp |
+| user_id | UUID | Owner of the document |
+| is_anonymous | BOOLEAN | Indicates whether the uploader is anonymous |
+
+ **document_chunks**  
+ 
  Stores the target contextual information and spatial vectors.
- ```
-ColumnTypeDescriptionidbigint (PK)Unique chunk ID identifierfile_idbigint (FK)Reference mapping link pointing back to uploaded_filessource_filenametextSource metadata tracking referencechunk_indexintegerPositional index sequence identifier inside parent doccontenttextRaw text characters stored inside this specific window sliceembeddingvector(1536)Multi-dimensional spatial coordinate embeddingftstsvectorComputed linguistic search lexeme array tokens
-```
+ ## Database Schema
+
+| Column | Type | Description |
+|---------|---------|---------|
+| id | BIGSERIAL | Unique chunk identifier |
+| content | TEXT | Chunk text content |
+| embedding | VECTOR(768) | Vector embedding |
+| source_filename | TEXT | Original document name |
+| file_size_bytes | INTEGER | Size of the file in bytes |
+| chunk_index | INTEGER | Position of the chunk within the document |
+| file_id | BIGINT | Reference to the parent file record |
+
 ## Traffic Control & Rate Limiting API Endpoints
-Routes are aggressively throttled via express-rate-limit middlewares. The server implements trust proxy: 1 structures to correctly read true client IPs across cloud infrastructure reverse proxies (like Render):
+Routes are aggressively throttled via express-rate-limit middlewares.
 
 **1. File Ingestion**
 Endpoint: POST /api/upload
 
 Traffic Restriction: Maximum of 5 file uploads per hour per IP.
 
-Description: Accepts a multipart form file stream, validates token schemas, and triggers text transformations.
 
 **2. Conversational Search**
 Endpoint: POST /api/search
 
 Traffic Restriction: Maximum of 15 query requests per minute per user ID.
 
-Description: Generates a real-time semantic query vector, fires the hybrid search database RPC, and strings the final generative answer back to the frontend bubble.
 ## Installation & Local Deployment
 **1. Repository Setup**
  ```
