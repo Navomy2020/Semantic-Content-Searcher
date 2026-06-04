@@ -133,10 +133,17 @@ app.use(express.static(path.join(process.cwd(), 'src/public')));
 // Uploads setup
 const storage = multer.memoryStorage();
 const textFileFilter = (req, file, cb) => {
-    if (file.mimetype == 'text/plain' || file.originalname.endsWith('.txt') || file.originalname.endsWith('.md')) {
+    if (
+        file.mimetype === 'text/plain' || 
+        file.mimetype === 'application/pdf' || 
+        file.originalname.endsWith('.txt') || 
+        file.originalname.endsWith('.md') || 
+        file.originalname.endsWith('.pdf')  
+    ) {
         cb(null, true);
     } else {
-        cb(new Error('Security Block: Only plain text (.txt) or markdown (.md) documents are allowed'), false);
+        
+        cb(new Error('Security Block: Only plain text (.txt), markdown (.md), or PDF (.pdf) documents are allowed'), false);
     }
 }
 const upload = multer({
