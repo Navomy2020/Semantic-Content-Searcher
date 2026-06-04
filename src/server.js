@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import { globalLimiter,aiIngestionLimiter,searchLimiter } from './middleware/rateLimiter.js';
 import path from 'path';
 import multer from 'multer';
 import { readFile } from './scripts/ingest.js';
@@ -8,6 +9,7 @@ import { searchAndAnswerByStream } from './scripts/search.js';
 import { createClient } from '@supabase/supabase-js'
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
@@ -152,7 +154,7 @@ const upload = multer({
     limits: { fileSize: 500 * 1024 }
 });
 
-app.post('/api/upload', upload.single('document'), async (req, res) => {
+app.post('/api/upload',aiIngestionLimiter, upload.single('document'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ 'message': 'Provide .txt or .md file' });
@@ -176,7 +178,7 @@ app.post('/api/upload', upload.single('document'), async (req, res) => {
 });
 
 // Search route
-app.post('/api/search', async (req, res) => {
+app.post('/api/search',searchLimiter, async (req, res) => {
     const { question } = req.body;
 
     if (!question) {
