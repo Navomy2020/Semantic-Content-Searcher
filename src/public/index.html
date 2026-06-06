@@ -352,7 +352,18 @@
                 alert(`Purge Failure: ${err.message}`);
             }
         }
+        function checkAndWarnInAppBrowser() {
+            const userAgentString = navigator.userAgent || navigator.vendor || window.opera;
 
+            // Check if the page is loading inside the LinkedIn webview sandbox
+            if (userAgentString.includes('LinkedInApp')) {
+                const warningBanner = document.createElement('div');
+                warningBanner.className = "w-full bg-amber-500 text-gray-950 text-center font-bold text-[11px] sm:text-xs p-3 sticky top-0 z-50 shadow-lg shrink-0";
+                warningBanner.innerHTML = "⚠️ <strong>In-App Browser Sandbox Active:</strong> For document uploads to work, tap the three dots (•••) at the top-right and select <strong>'Open in Browser'</strong>.";
+                document.body.prepend(warningBanner);
+            }
+        }
+        
         // Initialize session tokens on boot
         async function initSession() {
             try {
@@ -371,7 +382,10 @@
                 userDisplayStatus.textContent = "❌ Connection Fault: Security layer offline.";
             }
         }
-        window.addEventListener('DOMContentLoaded', initSession);
+         window.addEventListener('DOMContentLoaded', () => {
+            checkAndWarnInAppBrowser(); // First, check for the LinkedIn sandbox webview
+            initSession();              // Then, run your standard session handshake setup
+        });
 
         // Form profile authentication router execution
         authForm.addEventListener('submit', async (e) => {
