@@ -151,6 +151,8 @@ The API endpoints are protected by `express-rate-limit` to prevent abuse.
 | `/api/documents/:id`| `DELETE` | Deletes a document and its data. | Governed by global limits. |
 | `/api/auth/*`      | `POST`   | Handles user authentication. | Governed by global limits. |
 
+## 🚀 Live Link
+[Deploy on Render](https://semantic-content-searcher.onrender.com/)
 
 ## 🚀 Installation & Local Deployment
 
